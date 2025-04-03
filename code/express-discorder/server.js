@@ -40,6 +40,26 @@ function showLog(res, filename) {
   }
 }
 
+function handleHook(req, res, filename) {
+  const data = req.body.data;
+  
+  if (!data) {
+    return res.status(400).send('Missing data');
+  }
+
+  const from = data.payload.from.phone_number;
+  const to = data.payload.to[0].phone_number;
+  const message = data.payload.text;
+
+  const myMessage = `📩 Received SMS from ${from} to ${to}: ${message}`;
+  console.log(myMessage);
+  const logFilePath = path.join(__dirname, filename);
+
+  logToFile(myMessage, logFilePath);
+
+  res.sendStatus(200); 
+}
+
 const users = { [process.env.USERAUTH]: process.env.USERPASS };
 
 const auth = basicAuth({
@@ -60,7 +80,6 @@ app.get("/", (req, res) => res.send(`
   </html>
 `));
 
-
 app.get(process.env.USER_A_ENDPOINT, auth, (req, res) => {
   showLog(res, process.env.USER_A_FILE);
 });
@@ -70,47 +89,12 @@ app.get(process.env.USER_B_ENDPOINT, auth, (req, res) => {
 });
 
 app.post(process.env.WEBHOOK_URL_A, (req, res) => {
-  const data = req.body.data;
-  
-  if (!data) {
-    return res.status(400).send('Missing data');
-  }
-
-  const from = data.payload.from.phone_number;
-  const to = data.payload.to[0].phone_number;
-  const message = data.payload.text;
-
-  const myMessage = `📩 Received SMS from ${from} to ${to}: ${message}`;
-
-  console.log(myMessage);
-  const logFilePath = path.join(__dirname, process.env.USER_A_FILE);
-
-  logToFile(myMessage, logFilePath);
-
-  res.sendStatus(200); // Acknowledge receipt to Telnyx
+  handleHook(req, res, process.env.USER_A_FILE)
 });
 
 app.post(process.env.WEBHOOK_URL_B, (req, res) => {
-  const data = req.body.data;
-
-  if (!data) {
-    return res.status(400).send('Missing data');
-  }
-
-  const from = data.payload.from.phone_number;
-  const to = data.payload.to[0].phone_number;
-  const message = data.payload.text;
-
-  const myMessage = `📩 Received SMS from ${from} to ${to}: ${message}`;
-
-  console.log(myMessage);
-  const logFilePath = path.join(__dirname, process.env.USER_B_FILE);
-
-  logToFile(myMessage, logFilePath);
-
-  res.sendStatus(200); // Acknowledge receipt to Telnyx
+  handleHook(req, res, process.env.USER_B_FILE)
 });
-
 
 app.use((error, req, res, next) => {
   res.status(500)
